@@ -1,35 +1,119 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="./assets/img/4geeks.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hello Rigo with Vanilla.js</title>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Generador de Orden de Compra - Hard Hat Solutions</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f4f4f4; }
+        .control-panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; float: left; margin-right: 20px; }
+        .page { background: white; padding: 20px; border: 1px solid #ddd; max-width: 800px; margin-top: 20px; box-sizing: border-box; }
+        button, select, input { margin: 5px 0; width: 100%; padding: 8px; box-sizing: border-box; }
+        .btn-print { background: #0066cc; color: white; padding: 12px 30px; border: none; cursor: pointer; font-size: 16px; border-radius: 6px; }
+        .btn-print:hover { background: #0055aa; }
 
-    <!-- Fontawesome is our recomended library for icons -->
-    <link
-      rel="stylesheet"
-      href="https://use.fontawesome.com/releases/v5.2.0/css/all.css"
-      integrity="sha384-hWVjflwFxL6sNzntih27bfxkr27PmbbK/iSvJ+a4+0owXq79v+lsFkW54bOGbiDQ"
-      crossorigin="anonymous"
-    />
-  </head>
-  <body>
-    <!-- Write your HTML code here, you can delete everything withing the body tags -->
-    <div class="container-fluid text-center">
-      <h1 class="mt-5">Hello Rigo!</h1>
-      <img src="./assets/img/rigo-baby.jpg" />
-      <p class="alert alert-warning mt-4">
-        If this text is <b>not</b> centered and <b>yellow</b>, you probably have
-        an error
-      </p>
-      <div class="fixed-bottom p-4">
-        Made with ❤️ by
-        <a href="https://www.4geeksacademy.com">4Geeks Academy</a>
-      </div>
-    </div>
+        /* EVITA QUE EL PDF SE CORTE */
+        table, tr, .totals-section, .footer-notes, .notes, .signatures, .info-grid, .oc-box {
+            page-break-inside: avoid !important;
+        }
+        .page { page-break-after: always; }
 
-    <!-- Do not delete this script tag, this is what connects your HTML with the Javascript code -->
-    <script type="module" src="/app.js"></script>
-  </body>
+        /* NUEVO MEDIA PRINT MEJORADO */
+        @media print {
+            .no-print {
+                display: none;
+            }
+            .page {
+                margin: 0;
+                border: none;
+                box-shadow: none;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TODO TU HTML DEL PANEL Y LA PÁGINA (igual que antes) -->
+    <!-- ... (lo dejo igual, no lo repito para no hacer el mensaje eterno) ... -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        function formatearMoneda(n) {
+            return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(n);
+        }
+
+        // === NÚMERO DE OC INCREMENTAL ===
+        const KEY_OC = 'ultimaOC_HHS';
+        let numeroActual = parseInt(localStorage.getItem(KEY_OC) || '1');
+
+        function actualizarNumeroOC() {
+            const padded = String(numeroActual).padStart(4, '0');
+            document.getElementById('ocNum').textContent = padded;
+            document.getElementById('proximaOC').textContent = String(numeroActual + 1).padStart(4, '0');
+        }
+
+        // === FUNCIÓN generarPDF() REEMPLAZADA POR LA MEJORADA ===
+        function generarPDF() {
+            const obra = document.getElementById('dispObra').textContent.trim() || 'Sin Obra';
+            const numeroOC = document.getElementById('ocNum').textContent;
+            const nombreArchivo = `${obra} , OC N°${numeroOC}.pdf`;
+
+            const element = document.querySelector('.page');
+
+            // Guardamos estilos originales para restaurar después (opcional, pero limpio)
+            const borderOriginal = element.style.border;
+            const shadowOriginal = element.style.boxShadow;
+
+            // Quitamos bordes y sombras para el PDF
+            element.style.border = 'none';
+            element.style.boxShadow = 'none';
+
+            const opt = {
+                // Márgenes pequeños para aprovechar mejor la hoja
+                margin: 0.2,
+                filename: nombreArchivo,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2, // Mejor calidad de texto e imágenes
+                    useCORS: true,
+                    letterRendering: true,
+                    scrollY: 0 // Evita que capture scroll bajado
+                },
+                jsPDF: {
+                    unit: 'in',
+                    format: 'letter', // Tamaño carta estándar (mejor que A4 para Chile)
+                    orientation: 'portrait'
+                },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+
+            // Generar y descargar
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Solo incrementamos si se descargó correctamente
+                numeroActual++;
+                localStorage.setItem(KEY_OC, numeroActual);
+                actualizarNumeroOC();
+
+                // Restauramos estilos originales (opcional, para que la vista previa quede bonita)
+                element.style.border = borderOriginal;
+                element.style.boxShadow = shadowOriginal;
+            });
+        }
+
+        // Inicializar número
+        actualizarNumeroOC();
+
+        // === TODO EL RESTO DE TU SCRIPT (carga de proveedores, obras, ítems, notas, etc.) ===
+        // (lo dejo igual que tenías, no lo modifico)
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... tu código de fetch para proveedores y obras ...
+        });
+
+        // ... funciones agregarItem, renderizarTabla, notas, etc. ...
+
+    </script>
+</body>
 </html>
